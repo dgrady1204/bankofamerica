@@ -332,9 +332,6 @@ def _extract_statement_balances(
     else:  # For non-checking statement, ensure it's explicitly 0.00
         stmt_obj.total_check_amount = Decimal("0.00")
 
-    if stmt_obj.ending_balance == 0.00:
-        print('debug ending balance')
-
     logging.debug(
         "Extracted balances for %s (Type: %s): Beg %.2f, Dep %.2f, Wth %.2f, Chk %.2f, Fees %.2f, End %.2f",
         stmt_obj.filename,
@@ -634,9 +631,10 @@ def process_and_insert_statements(db_manager: BoaDbManager,
     }
 
     # Step 1: Process the file to get statement metadata
+    # Year is derived from the PDF content (not hardcoded); pass None as placeholder
     logical_statements, master_stmt_for_pdf_file = (
         process_single_pdf_file_to_statements(
-            file_path, '2025', pdf_content
+            file_path, None, pdf_content
         )
     )
 
@@ -649,110 +647,39 @@ def process_and_insert_statements(db_manager: BoaDbManager,
 
     # Step 3: Generate a new filename based on the metadata
     new_filename = generate_new_filename(master_stmt_for_pdf_file)
-    new_full_path = os.path.join(STATEMENT_DIRECTORY,
-                                 str(master_stmt_for_pdf_file.year),
-                                 new_filename)
     file_status["new_filename"] = new_filename
 
-    # Step 4: Check for duplicates using the NEW filename
-    existing_physical_filenames_in_db = _get_physical_filenames_from_db(db_manager)
-    if new_full_path in existing_physical_filenames_in_db:
+    # Step 4: Build the destination path and check for duplicates
+    dest_dir = os.path.join(STATEMENT_DIRECTORY, str(master_stmt_for_pdf_file.year))
+    os.makedirs(dest_dir, exist_ok=True)
+    new_full_path = os.path.join(dest_dir, new_filename)
+
+    existing_filenames_in_db = _get_physical_filenames_from_db(db_manager)
+    if new_full_path in existing_filenames_in_db:
         file_status["status"] = "error"
         file_status["message"] = "Statement already exists in the database."
         status_list.append(file_status)
         return status_list
 
-    # Step 5: Rename the file and move it to the correct directory
+    # Step 5: Move the file to the destination directory with the new name
     try:
-        renamed_path = rename_statement_file(file_path, new_full_path)
-
-        # Step 6: Check for renaming errors
-        if not renamed_path:
-            file_status["status"] = "error"
-            file_status["message"] = "Failed to rename and move the file."
-            status_list.append(file_status)
-            return status_list
+        shutil.move(file_path, new_full_path)
+        logging.info("Moved '%s' to '%s'", os.path.basename(file_path), new_full_path)
     except OSError as e:
         file_status["status"] = "error"
-        file_status["message"] = f"File is locked, cannot rename: {e}"
+        file_status["message"] = f"Failed to move file: {e}"
         status_list.append(file_status)
         return status_list
 
-    # Step 7: Insert into the database
+    # Step 6: Insert into the database using the full destination path
     for stmt_obj in logical_statements:
-        stmt_obj.filename = renamed_path
+        stmt_obj.filename = new_full_path
         db_manager.insert_statement(stmt_obj)
 
     file_status["status"] = "success"
     file_status["message"] = f"File renamed to '{new_filename}' and added to database."
     status_list.append(file_status)
     return status_list
-
-
-# In src/boa_statement.py
-def process_and_insert_single_statement(db_manager: BoaDbManager,
-                                        file_path: str,
-                                        pdf_content: bytes) -> list[dict]:
-    """
-    Processes a single uploaded statement file, parses it, and adds it to the database.
-    Returns a list of status dictionaries for the file.
-    """
-    file_status = {
-        "old_filename": os.path.basename(file_path),
-        "new_filename": "",
-        "status": "pending",
-        "message": "",
-    }
-
-    # Step 1: Process the file to get statement metadata
-    logical_statements, master_stmt_for_pdf_file = (
-        process_single_pdf_file_to_statements(
-            file_path, '2025', pdf_content
-        )
-    )
-
-    # Step 2: Check for parsing errors
-    if not logical_statements:
-        file_status["status"] = "error"
-        file_status["message"] = "Not a valid bank statement or parsing failed."
-        return [file_status]
-
-    # Step 3: Generate a new filename based on the metadata
-    new_filename = generate_new_filename(master_stmt_for_pdf_file)
-    new_full_path = os.path.join(STATEMENT_DIRECTORY,
-                                 str(master_stmt_for_pdf_file.year),
-                                 new_filename)
-    file_status["new_filename"] = new_filename
-
-    # Step 4: Check for duplicates using the NEW filename
-    existing_physical_filenames_in_db = _get_physical_filenames_from_db(db_manager)
-    if new_full_path in existing_physical_filenames_in_db:
-        file_status["status"] = "error"
-        file_status["message"] = "Statement already exists in the database."
-        return [file_status]
-
-    # Step 5: Rename the file and move it to the correct directory
-    try:
-        renamed_path = rename_statement_file(file_path, new_full_path)
-
-        # Step 6: Check for renaming errors
-        if not renamed_path:
-            file_status["status"] = "error"
-            file_status["message"] = "Failed to rename and move the file."
-            return [file_status]
-    except OSError as e:
-        file_status["status"] = "error"
-        file_status["message"] = f"File is locked, cannot rename: {e}"
-        return [file_status]
-
-    # Step 7: Insert into the database
-    for stmt_obj in logical_statements:
-        stmt_obj.filename = renamed_path
-        db_manager.insert_statement(stmt_obj)
-
-    file_status["status"] = "success"
-    file_status["message"] = f"File renamed to '{new_filename}' and added to database."
-    return [file_status]
 
 
 def main():
@@ -801,7 +728,7 @@ def main():
 
             # Process the single file and its content.
             # This function will also check for duplicates and handle the file renaming.
-            file_results = process_and_insert_single_statement(db_manager, file_path, pdf_contents)
+            file_results = process_and_insert_statements(db_manager, file_path, pdf_contents)
             status_list.extend(file_results)
 
         # The loop now handles the processing, so we just need to log a summary

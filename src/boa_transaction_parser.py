@@ -1,15 +1,24 @@
 """
-
+boa_transaction_parser.py
 """
 
-# boa_transaction_parser.py
-
 import re
-from decimal import Decimal
+import logging
+from decimal import Decimal, InvalidOperation
 from datetime import date
 
 # Import the Transaction ORM model
 from boa_models import Transaction
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_year(year_str: str) -> int:
+    """Parse a 2-digit or 4-digit year string into a full year integer."""
+    year_int = int(year_str)
+    if year_int < 100:
+        year_int += 2000
+    return year_int
 
 
 def create_from_page_lines(statement_pages):
@@ -17,7 +26,7 @@ def create_from_page_lines(statement_pages):
     Create Transaction instances from page lines.
 
     Args:
-        page_lines (list): List of transaction lines from a PDF statement
+        statement_pages (dict): Dict of page_number -> list of text lines
 
     Returns:
         list: List of Transaction instances
@@ -37,44 +46,52 @@ def create_from_page_lines(statement_pages):
             )
             if check_search:
                 for check in check_search:
-                    check_date = check.split(" ")[0]
-                    check_year = int("20" + check_date.split("/")[2])
-                    check_month = int(check_date.split("/")[0])
-                    check_day = int(check_date.split("/")[1])
-                    transaction_date = date(check_year, check_month, check_day)
-                    check_number = check.split(" ")[1]
-                    amount = Decimal(check.split(" ")[2].replace(",", ""))
+                    try:
+                        check_date = check.split(" ")[0]
+                        date_parts = check_date.split("/")
+                        check_year = _parse_year(date_parts[2])
+                        check_month = int(date_parts[0])
+                        check_day = int(date_parts[1])
+                        transaction_date = date(check_year, check_month, check_day)
+                        check_number = check.split(" ")[1]
+                        amount = Decimal(check.split(" ")[2].replace(",", ""))
+                        new_transaction = Transaction(
+                            transaction_date=transaction_date,
+                            transaction_description=None,
+                            transaction_amount=amount,
+                            transaction_check_number=check_number,
+                            transaction_transaction_type="Check",
+                            transaction_comment=None,
+                            transaction_primary_category=None,
+                            transaction_secondary_category=None,
+                        )
+                        transactions.append(new_transaction)
+                    except (ValueError, InvalidOperation, IndexError) as e:
+                        logger.warning("Skipping unparseable check line: '%s' (%s)", line.strip(), e)
+            elif transaction_date_search:
+                try:
+                    raw_date = transaction_date_search[0]
+                    date_parts = raw_date.split("/")
+                    txn_year = _parse_year(date_parts[2])
+                    txn_month = int(date_parts[0])
+                    txn_day = int(date_parts[1])
+                    transaction_date = date(txn_year, txn_month, txn_day)
+                    amount = Decimal(line.split(" ")[-1].replace(",", ""))
+                    desc = " ".join(line.split()[1:-1])
                     new_transaction = Transaction(
                         transaction_date=transaction_date,
-                        transaction_description=None,
+                        transaction_description=desc,
                         transaction_amount=amount,
-                        transaction_check_number=check_number,
-                        transaction_transaction_type="Check",
+                        transaction_check_number=None,
+                        transaction_transaction_type=(
+                            "Deposit" if amount > 0 else "Credit"
+                        ),
                         transaction_comment=None,
                         transaction_primary_category=None,
                         transaction_secondary_category=None,
                     )
                     transactions.append(new_transaction)
-            elif transaction_date_search:
-                transaction_date = transaction_date_search[0]
-                txn_year = int("20" + transaction_date.split("/")[2])
-                txn_month = int(transaction_date.split("/")[0])
-                txn_day = int(transaction_date.split("/")[1])
-                transaction_date = date(txn_year, txn_month, txn_day)
-                amount = Decimal(line.split(" ")[-1].replace(",", ""))
-                desc = " ".join(line.split()[1:-1])
-                new_transaction = Transaction(
-                    transaction_date=transaction_date,
-                    transaction_description=desc,
-                    transaction_amount=amount,
-                    transaction_check_number=None,
-                    transaction_transaction_type=(
-                        "Deposit" if amount > 0 else "Credit"
-                    ),
-                    transaction_comment=None,
-                    transaction_primary_category=None,
-                    transaction_secondary_category=None,
-                )
-                transactions.append(new_transaction)
+                except (ValueError, InvalidOperation, IndexError) as e:
+                    logger.warning("Skipping unparseable transaction line: '%s' (%s)", line.strip(), e)
 
     return transactions

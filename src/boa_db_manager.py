@@ -26,7 +26,7 @@ class BoaDbManager:
 
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        self.conn = sqlite3.connect(self.db_path)
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
 
@@ -83,8 +83,9 @@ class BoaDbManager:
                 "Database schema recreated to version %s.", CURRENT_SCHEMA_VERSION
             )
 
-        # Optimize database size
-        self.conn.execute("VACUUM")
+        # Only VACUUM after schema recreation (not on every connection)
+        if needs_recreation:
+            self.conn.execute("VACUUM")
 
     def close(self):
         """Closes the database connection."""
@@ -392,3 +393,39 @@ class BoaDbManager:
         """Retrieves a set of all statement filenames in the database."""
         self.cursor.execute("SELECT filename FROM statements")
         return set(row[0] for row in self.cursor.fetchall())
+
+    def update_transaction(self, txn_id: int, override_description: str,
+                           comment: str, primary_category: str,
+                           secondary_category: str) -> bool:
+        """Updates user-editable fields on a transaction. Returns True on success."""
+        try:
+            self.cursor.execute(
+                """
+                UPDATE transactions SET
+                    transaction_description_override = ?,
+                    transaction_comment = ?,
+                    transaction_primary_category = ?,
+                    transaction_secondary_category = ?
+                WHERE id = ?
+                """,
+                (override_description or None, comment or None,
+                 primary_category or None, secondary_category or None,
+                 txn_id),
+            )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except Exception as e:
+            self.conn.rollback()
+            logging.error("Failed to update transaction %s: %s", txn_id, e)
+            return False
+
+    def delete_transaction(self, txn_id: int) -> bool:
+        """Deletes a transaction by ID. Returns True on success."""
+        try:
+            self.cursor.execute("DELETE FROM transactions WHERE id = ?", (txn_id,))
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except Exception as e:
+            self.conn.rollback()
+            logging.error("Failed to delete transaction %s: %s", txn_id, e)
+            return False

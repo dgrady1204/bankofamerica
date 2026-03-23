@@ -610,15 +610,80 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- Detail Modal: Close, Cancel, Save, Delete ---
+  const detailModal = document.getElementById("detail-modal");
+  const detailCloseButtons = detailModal ? detailModal.querySelectorAll(".close-button") : [];
+  const cancelButton = document.getElementById("cancel-button");
+  const saveButton = document.getElementById("save-button");
+  const deleteButton = document.getElementById("delete-button");
+
+  function closeDetailModal() {
+    if (detailModal) detailModal.style.display = "none";
+    currentTransactionId = null;
+  }
+
+  detailCloseButtons.forEach(btn => btn.addEventListener("click", closeDetailModal));
+  if (cancelButton) cancelButton.addEventListener("click", closeDetailModal);
+
+  if (saveButton) {
+    saveButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!currentTransactionId) return;
+
+      const payload = {
+        id: currentTransactionId,
+        override_description: document.getElementById("override-description").value,
+        comment: document.getElementById("modal-comment").value,
+        primary_category: document.getElementById("modal-primary-category").value,
+        secondary_category: document.getElementById("modal-secondary-category").value,
+      };
+
+      fetch("/update_transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            closeDetailModal();
+            // Refresh the detail view by re-clicking the active summary cell
+            if (activeCell) fetchTransactionDetails(activeCell);
+          } else {
+            alert("Save failed: " + (data.error || "Unknown error"));
+          }
+        })
+        .catch(err => alert("Save error: " + err.message));
+    });
+  }
+
+  if (deleteButton) {
+    deleteButton.addEventListener("click", () => {
+      if (!currentTransactionId) return;
+      if (!confirm("Are you sure you want to delete this transaction?")) return;
+
+      fetch("/delete_transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentTransactionId }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            closeDetailModal();
+            if (activeCell) fetchTransactionDetails(activeCell);
+          } else {
+            alert("Delete failed: " + (data.error || "Unknown error"));
+          }
+        })
+        .catch(err => alert("Delete error: " + err.message));
+    });
+  }
+
   const summaryTable = document.querySelector(
     ".category-month-table.tablesort"
   );
   if (summaryTable) {
     new Tablesort(summaryTable);
-  }
-
-  function openInputModal(row) {
-    console.log("Row clicked:", row);
-    // Your modal logic here
   }
 });

@@ -63,6 +63,9 @@ cleanup_temp_uploads()
 app = Flask(__name__)
 app_logger.info("Flask application starting up...")
 
+# Create a single DB manager instance at startup (not per-request)
+db_manager = BoaDbManager(force_recreate=False)
+
 # In src/boa_app.py
 def load_data_from_db() -> pd.DataFrame:
     """
@@ -70,8 +73,6 @@ def load_data_from_db() -> pd.DataFrame:
     joining them to enrich transaction data with statement details.
     Returns a pandas DataFrame of all transactions found.
     """
-    db_manager = BoaDbManager(force_recreate=False)
-
     try:
         rows = db_manager.get_all_transactions_with_statements()
 
@@ -149,8 +150,6 @@ def load_data_from_db() -> pd.DataFrame:
             "Failed to load data from database for Flask app: %s", e, exc_info=True
         )
         return pd.DataFrame()
-    finally:
-        db_manager.close()
 
 
 # --- Flask Routes ---
@@ -179,15 +178,17 @@ def dashboard_home(selected_year: int = None):
                                          .astype(int)
                                          .tolist(), reverse=True)
 
-            print(f"all_available_years: {all_available_years}")
+            app_logger.info("all_available_years: %s", all_available_years)
             if selected_year is None or selected_year not in all_available_years:
                 selected_year = all_available_years[
                     0] if all_available_years else datetime.now().year
 
-            df_for_pivot = df[df['statement_year'] == selected_year].copy()
-
-            # Then, apply the account type filter if needed.
-            if account_type_filter != "All":
+            # Filter by year: "All" view uses the transaction's actual date year,
+            # Checking/Savings views use the statement year (matches statement_period grouping)
+            if account_type_filter == "All":
+                df_for_pivot = df[df['date'].dt.year == selected_year].copy()
+            else:
+                df_for_pivot = df[df['statement_year'] == selected_year].copy()
                 if account_type_filter == "Checking":
                     df_for_pivot = df_for_pivot[
                         (df_for_pivot['statement_account_type'] == 'Checking') |
@@ -276,12 +277,10 @@ def dashboard_home(selected_year: int = None):
         last_period_df = sorted_periods_df.iloc[-1]
         last_start_date = last_period_df['statement_start_date']
 
-        # Use BoaDbManager to query for the statement with the last_start_date
-        db_manager = BoaDbManager(force_recreate=False)
+        # Use global db_manager to query for the statement with the last_start_date
         stmt_row = db_manager.get_statement_by_start_date(
             last_start_date.isoformat() if isinstance(last_start_date, date) else str(last_start_date)
         )
-        db_manager.close()
         last_end_date = date.fromisoformat(stmt_row['end_date']) if stmt_row else None
 
         # Generate subsequent headers to fill out the year
@@ -340,7 +339,6 @@ def get_transaction_details():
     """Endpoint to retrieve transaction details based on filters."""
     summary_rows = []
 
-    db_manager = BoaDbManager(force_recreate=False)
     try:
         # Get and convert parameters
         year_str = request.args.get('year')
@@ -433,8 +431,6 @@ def get_transaction_details():
     except Exception as e:
         app_logger.error("Error in get_transaction_details: %s", e, exc_info=True)
         return jsonify({"error": "Failed to load details due to server error."}), 500
-    finally:
-        db_manager.close()
 
 
 @app.route('/upload_statements', methods=['POST'])
@@ -449,8 +445,6 @@ def upload_statements():
     temp_dir = 'temp_uploads'
     os.makedirs(temp_dir, exist_ok=True)
     file_paths_and_content = []
-    db_manager = BoaDbManager(force_recreate=False)
-
     for file in uploaded_files:
         if file.filename == '':
             continue
@@ -478,15 +472,44 @@ def upload_statements():
         if os.path.exists(item['path']):
             os.remove(item['path'])
 
-    db_manager.close()
     return jsonify({'status': status_list})
+
+@app.route("/update_transaction", methods=["POST"])
+def update_transaction():
+    """Endpoint to update user-editable fields on a transaction."""
+    data = request.get_json()
+    if not data or "id" not in data:
+        return jsonify({"success": False, "error": "Missing transaction ID"}), 400
+
+    success = db_manager.update_transaction(
+        txn_id=int(data["id"]),
+        override_description=data.get("override_description", ""),
+        comment=data.get("comment", ""),
+        primary_category=data.get("primary_category", ""),
+        secondary_category=data.get("secondary_category", ""),
+    )
+    if success:
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Transaction not found or update failed"}), 404
+
+
+@app.route("/delete_transaction", methods=["POST"])
+def delete_transaction():
+    """Endpoint to delete a transaction by ID."""
+    data = request.get_json()
+    if not data or "id" not in data:
+        return jsonify({"success": False, "error": "Missing transaction ID"}), 400
+
+    success = db_manager.delete_transaction(txn_id=int(data["id"]))
+    if success:
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Transaction not found or delete failed"}), 404
+
 
 @app.route("/view_statement/<int:statement_id>")
 def view_statement(statement_id):
     """Endpoint to serve a PDF file for a specific statement."""
-    db_manager = BoaDbManager(force_recreate=False)
     stmt_row = db_manager.get_statement_by_id(statement_id)
-    db_manager.close()
 
     if stmt_row and stmt_row.get('pdf_data'):
         return send_file(
