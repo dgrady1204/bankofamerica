@@ -1,0 +1,37 @@
+3/22/2026
+The run button on boa_app.py works.  The project exists in personal bitbucket repo.
+
+(.venv) PS C:\Users\dgrad\_repos\BankOfAmerica\src> & c:\Users\dgrad\_repos\BankOfAmerica\.venv\Scripts\python.exe c:/Users/dgrad/_repos/BankOfAmerica/src/boa_app.py
+2026-03-22 19:34:06,041 - INFO - __main__ - Flask application starting up...
+2026-03-22 19:34:06,046 - INFO - __main__ - Running Flask app in development mode.
+ * Serving Flask app 'boa_app'
+ * Debug mode: on
+2026-03-22 19:34:06,245 - INFO - werkzeug - WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.154:5000
+
+Statements go through July 2025.
+
+need to check requirements.txt to see what's allowed at MEDITECH.
+
+Last Greeley's oil fill - October 2024.  I need to add a way of categorizing and adding notes to transactions.
+
+Statements are only viewable when on a specific statement type.
+
+
+# You already did these steps:
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Install dependencies:
+pip install -r requirements.txt
+
+# Run your app:
+python src/boa_app.py
+
+# When done, deactivate:
+deactivate
+
+# Just delete the folder:
+Remove-Item -Recurse -Force .venv

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bank Statement Dashboard</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_styles.css') }}">
+    <script src="{{ url_for('static', filename='tablesort.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='tablesort.number.min.js') }}"></script>
+  </head>
+  <body>
+    <div class="main-wrapper">
+      <h1>Bank Statement Dashboard</h1>
+      <div class="dashboard-filters">
+          <div class="filter-group">
+              <label for="year-select">Select Year:</label>
+              <select id="year-select" class="form-control" onchange="updateDashboardFilters()">
+                  {% for year in all_available_years %}
+                  <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
+                  {% endfor %}
+              </select>
+          </div>
+          <div class="filter-group">
+              <label for="account-type-select">Account Type:</label>
+              <select id="account-type-select" class="form-control" onchange="updateDashboardFilters()">
+                  {% for acc_type in ['All', 'Checking', 'Savings'] %}
+                  <option value="{{ acc_type }}" {% if acc_type == selected_account_type %}selected{% endif %}>{{ acc_type }}</option>
+                  {% endfor %}
+              </select>
+          </div>
+          <div class="filter-group">
+              <button id="add-statements-button" class="form-control">Add Statements</button>
+          </div>
+      </div>
+      
+      <h2>Spending Summary - {{ selected_year }}</h2>
+      {% if no_data_message %} 
+        {{ no_data_message | safe }} 
+      {% elif pivot_data is not none %} 
+        {% include 'transactions.html' with context %}
+      {% endif %}
+
+      <div id="transaction-detail-container" style="margin-top: 30px; display: none;"></div>
+
+      <!-- Modal for adding statements -->
+      <div id="add-statements-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <h2>Add New Statements</h2>
+          <div class="file-area">
+            <div id="file-list-container">
+              <ul id="file-list"></ul>
+            </div>
+          </div>
+          <div class="button-container">
+              <button id="modal-browse-button" class="form-control">Browse</button>
+              <button id="add-to-db-button" class="form-control" disabled>Add to Database</button>
+          </div>
+          <input type="file" id="file-input" multiple style="display: none;">
+        </div>
+      </div>
+
+      <!-- Custom Alert Modal -->
+      <div id="alert-modal" class="modal">
+          <div class="modal-content alert-content">
+              <p id="alert-message"></p>
+              <div class="button-container">
+                  <button id="alert-ok-button" class="form-control">OK</button>
+              </div>
+          </div>
+      </div>
+
+      <!-- Transaction detail Modal -->
+      <div id="detail-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <h3>Transaction Details</h3>
+          <form id="detail-form">
+            <div class="details-display">
+              <p><strong>Date:</strong> <span id="modal-date"></span></p>
+              <p><strong>Description:</strong> <span id="modal-description"></span></p>
+              <p><strong>Amount:</strong> <span id="modal-amount"></span></p>
+              <p><strong>Check Number:</strong> <span id="modal-check-number"></span></p>
+              <p><strong>Transaction Type:</strong> <span id="modal-transaction-type"></span></p>
+            </div>
+
+            <hr />
+
+            <div class="user-inputs">
+              <div class="form-group">
+                <label for="override-description">Override Description:</label>
+                <input type="text" id="override-description" name="override_description" />
+              </div>
+              <div class="form-group">
+                <label for="modal-comment">Comment:</label>
+                <textarea id="modal-comment" name="comment"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="modal-primary-category">Primary Category:</label>
+                <input type="text" id="modal-primary-category" list="primary-categories" />
+                <datalist id="primary-categories"></datalist>
+              </div>
+              <div class="form-group">
+                <label for="modal-secondary-category">Secondary Category:</label>
+                <input type="text" id="modal-secondary-category" list="secondary-categories" />
+                <datalist id="secondary-categories"></datalist>
+              </div>
+            </div>
+            <div class="modal-buttons">
+              <button type="submit" id="save-button">Save Changes</button>
+              <button type="button" id="delete-button">Delete</button>
+              <button type="button" id="cancel-button">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <script src="{{ url_for('static', filename='dashboard_scripts.js') }}"></script>
+    </div>
+  </body>
+</html>

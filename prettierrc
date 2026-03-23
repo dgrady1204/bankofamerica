@@ -1,0 +1,15 @@
+{
+  "overrides": [
+    {
+      "files": [
+        "*.jsonc",
+        "launch.json",
+        "tasks.json",
+        "settings.json"
+      ],
+      "options": {
+        "parser": "jsonc"
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "emmet.includeLanguages": { "jinja-html": "html" },
+  "python.analysis.extraPaths": ["./src"],
+  "pylint.args": ["--init-hook", "import sys; sys.path.insert(0, './src')"]
+}

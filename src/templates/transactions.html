@@ -1,0 +1,49 @@
+<table border="1" class="category-month-table">
+  <thead>
+    <tr>
+      <th></th>
+      {# Top-left blank cell #} {% for header_label in header_labels %}
+      <th>{{ header_label }}</th>
+      {% endfor %}
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for category, row in pivot_data.iterrows() %}
+    <tr>
+      <td>{{ category }}</td>
+      {% for header_label in header_labels %}
+      <td
+        id="cell-{{ category | replace(' ', '-') }}-{{ loop.index0 }}"
+        class="clickable-cell"
+        data-category="{{ category }}"
+        data-header="{{ header_label }}"
+        data-amount="{{ row[header_label] }}"
+        data-year="{{ selected_year }}"
+        onclick="fetchTransactionDetails(this)"
+      >
+        {{ "{:,.2f}".format(row[header_label]) }}
+      </td>
+      {% endfor %}
+      <td
+        id="cell-{{ category | replace(' ', '-') }}-total"
+        class="clickable-cell"
+        data-category="{{ category }}"
+        data-header="Total"
+        data-amount="{{ row['Total'] }}"
+        data-year="{{ selected_year }}"
+        onclick="fetchTransactionDetails(this)"
+      >
+        {{ "{:,.2f}".format(row['Total']) }}
+      </td>
+    </tr>
+    {% endfor %}
+    <!-- <tr>
+<td>Total</td>
+{% for header_label in header_labels %}
+<td>{{ "{:,.2f}".format(pivot_data.loc['Total'][header_label]) }}</td>
+{% endfor %}
+<td>{{ "{:,.2f}".format(pivot_data.loc['Total']['Total']) }}</td>
+</tr> -->
+  </tbody>
+</table>

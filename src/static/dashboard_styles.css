@@ -1,0 +1,424 @@
+body {
+  background-color: #282c34;
+  color: #f8f8f2;
+  font-family: Arial, sans-serif;
+  margin: 50px;
+}
+
+.main-wrapper {
+  max-width: 1500px; /* Set a max width for your dashboard */
+  margin: 0 auto; /* This centers the wrapper */
+  padding: 20px; /* This replaces the old body margin */
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #61dafb;
+}
+h2 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  margin-left: 0; /* Ensures left alignment */
+}
+table {
+  width: 100%;
+  /* Align the main summary table (at the top) with the left-aligned headers */
+  margin-top: 20px;
+  margin-right: auto; /* Keep it responsive */
+  margin-bottom: 20px;
+  margin-left: auto; /* Forces the table to start at the left edge of the content area */
+  border-collapse: collapse;
+  background-color: #3a3f4a;
+  color: #f8f8f2;
+}
+th,
+td {
+  border: 1px solid #555;
+  padding: 8px;
+  text-align: left;
+}
+th {
+  background-color: #4a4f5a;
+  color: #a8a8a2;
+}
+/* NEW: Ensure THEAD and TBODY cells align */
+/* This is necessary for the fixed-header scrolling pattern */
+#transaction-detail-table thead,
+#transaction-detail-table tbody tr {
+  display: table; /* Forces block behavior while maintaining table cell properties */
+  width: 100%;
+  table-layout: fixed; /* Ensures column width consistency */
+}
+
+/* --- STYLING FIX: SUMMARY TABLE COLORS --- */
+
+/* This rule applies to the main "Spending Summary" table */
+.category-month-table tbody tr:nth-child(even) {
+  /* New subtle stripe color */
+  background-color: #424753;
+}
+
+/* This rule applies ONLY to the "Total" row (the last row) */
+.category-month-table tbody tr:last-child {
+  background-color: #4a4f5a; /* Same as table header for emphasis */
+  font-weight: bold;
+}
+
+/* This rule applies to the *other* tables, like the transaction details */
+/* We reset the detail table to its own (different) striping */
+.detail-table tr:nth-child(even) {
+  background-color: #353840;
+}
+/* --- END STYLING FIX --- */
+
+.clickable-cell {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.clickable-cell:hover {
+  background-color: #555;
+}
+.selected-cell {
+  background-color: #6a6a6a; /* A darker gray to show it's selected */
+}
+.detail-table {
+  margin-top: 0px;
+  font-size: 0.9em;
+  width: 100%;
+  table-layout: fixed; /* Ensures column width consistency across header and body */
+}
+.detail-table th,
+.detail-table td {
+  padding: 6px;
+}
+.dashboard-filters {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px 0px 10px 0px;
+  border-radius: 8px;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+}
+.filter-group label {
+  margin-right: 10px;
+  color: #61dafb;
+  font-weight: bold;
+  font-size: 1.5em;
+}
+.form-control {
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px solid #555;
+  background-color: #4a4f5a;
+  color: #f8f8f2;
+  font-size: 1em;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.form-control:disabled {
+  cursor: not-allowed;
+  color: #a8a8a2;
+  border-color: #a8a8a2;
+}
+.balances-and-transactions-container {
+  width: 100%; /* Increased width for two-column layout */
+  max-width: 1500px;
+  margin: 20px auto;
+}
+
+/* --- NEW FLEXBOX LAYOUT --- */
+.details-content-wrapper {
+  display: flex;
+  gap: 20px; /* Space between the two columns */
+  align-items: flex-start; /* Aligns content to the top */
+}
+/* Left column (Activity Summary) */
+.summary-column {
+  flex-basis: 380px; /* Fixed width for the summary block */
+  flex-shrink: 0; /* Prevents shrinking */
+  /* Making the summary sticky so it stays visible even if the main dashboard scrolls */
+  position: sticky;
+  top: 20px; /* Offset from the top of the viewport */
+}
+/* Right column (Transactions) */
+.transactions-column {
+  flex-grow: 1; /* Takes up the rest of the available space */
+}
+/* --- END FLEXBOX LAYOUT --- */
+
+/* Redefine balance-summary to fit within the summary-column */
+.balance-summary {
+  background-color: transparent; /* Changed to transparent since background is on summary-column */
+  border: none; /* Removed border */
+  border-radius: 0; /* Removed border radius */
+  padding: 0; /* REMOVED padding, moving to child */
+  margin-bottom: 0;
+  color: #f8f8f2;
+  text-align: left;
+}
+
+/* --- STYLING FIX: SUMMARY COLUMN ALIGNMENT --- */
+
+/* REMOVED the old .balance-summary p rule */
+/* .balance-summary p { ... } */
+
+/* ADDED new rules for the new .summary-line class */
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 4px 0;
+  font-size: 1em;
+}
+/* This class is for the <p> tags in the "All" view */
+.balance-summary p.summary-line {
+  margin: 8px 0;
+}
+
+.summary-line span:first-child {
+  /* This is the label, allow it to wrap if needed */
+  text-align: left;
+  padding-right: 10px; /* Add space between label and value */
+}
+
+.summary-line strong,
+.summary-line span:last-child {
+  /* This is the value/date, force it right */
+  text-align: right;
+  font-weight: bold;
+  white-space: nowrap; /* Prevents value from wrapping */
+}
+
+.summary-line strong {
+  color: #61dafb;
+}
+/* --- END STYLING FIX --- */
+
+/* --- NEW: Styles for Single-Account Summary Box (Dividers & Button) --- */
+hr.summary-divider {
+  border: 0;
+  height: 2px;
+  background-color: #4a4f5a; /* Heavier line, matches header */
+  margin: 15px 0;
+}
+hr.summary-divider-light {
+  border: 0;
+  height: 1px;
+  background-color: #555; /* Lighter line */
+  margin: 10px 0;
+}
+.summary-button-container {
+  margin-top: 20px;
+}
+.summary-button-container .form-control {
+  width: 100%; /* Make button full-width */
+  text-align: center;
+}
+/* --- END NEW STYLES --- */
+.balance-summary h3 {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #61dafb;
+}
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: 10px;
+  align-items: center;
+}
+#file-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+#file-list li {
+  display: flex;
+  justify-content: flex-start;
+  gap: 20px;
+  align-items: center;
+  margin: 5px 0;
+}
+#file-list-container {
+  max-height: 190px;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-left: 0;
+}
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+.modal-content {
+  background-color: #3a3f4a;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 40%;
+  border-radius: 8px;
+  position: relative;
+}
+.close-button {
+  color: #f8f8f2;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+.close-button:hover,
+.close-button:focus {
+  color: #61dafb;
+  text-decoration: none;
+  cursor: pointer;
+}
+.remove-file-button {
+  cursor: pointer;
+  color: #a8a8a2;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+.remove-file-button:hover {
+  color: #e57373;
+}
+
+/* Styles for the custom alert modal content */
+.alert-content {
+  width: 800px;
+  text-align: left;
+}
+
+.amount-column {
+  text-align: right;
+  padding-right: 15px;
+  width: 120px;
+}
+
+.negative-amount {
+  color: #e57373;
+}
+.positive-amount {
+  color: #f8f8f2; /* Or a light green if you prefer */
+}
+
+th {
+  white-space: nowrap;
+}
+#transaction-detail-container {
+  width: 100%;
+  max-width: 1500px;
+  margin: 30px auto;
+  display: none;
+}
+
+/* Style for the H2 header inside the container */
+#transaction-detail-container h2 {
+  color: #61dafb;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+/* Add spacing between the Checking and Savings blocks */
+.account-summary-container {
+  margin-bottom: 30px;
+  /* FIX #4: This is the bordered, padded box */
+  border: 1px solid #555;
+  border-radius: 8px;
+  background-color: #3a3f4a;
+  padding: 15px 20px; /* This provides the internal padding */
+}
+
+/* FIX #3: Center the title and add space */
+.account-summary-container h3 {
+  text-align: center;
+  margin-bottom: 15px; /* Added margin-bottom */
+  margin-top: 0; /* Ensure no extra top margin */
+}
+
+/* For the last block, remove the bottom margin to prevent extra space */
+.account-summary-container:last-child {
+  margin-bottom: 0;
+}
+.detail-table tr:hover {
+  background-color: #5a3f4a;
+  cursor: pointer;
+}
+
+/* Base style for transaction rows */
+.detail-table tbody tr {
+  border-left: 5px solid transparent;
+}
+/* Generic Hover Rule for the whole detail table */
+.detail-table tbody tr:hover {
+  cursor: pointer !important;
+  background-color: #4a4f5a !important;
+}
+
+/* 1. Checking Account Color (Subtle Light Blue/Green Tint) */
+.detail-table tbody tr.account-checking {
+  background-color: #3f4a4c;
+}
+
+/* 2. Savings Account Color (Subtle Purple/Violet Tint) */
+.detail-table tbody tr.account-savings {
+  background-color: #453f4c;
+}
+
+/* 3. Handling future accounts (e.g., Investment or Credit Card) */
+.detail-table tbody tr.account-credit {
+  background-color: #4a453f;
+}
+
+/* NEW: Styles for the transaction table wrapper to enable scrolling */
+#transaction-scroll-wrapper {
+  display: block;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden; /* Fixes horizontal scrollbar */
+}
+
+/* Custom Scrollbar Styling (Webkit only - Chrome/Safari/Edge) */
+#transaction-scroll-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+#transaction-scroll-wrapper::-webkit-scrollbar-thumb {
+  background-color: #61dafb;
+  border-radius: 4px;
+}
+#transaction-scroll-wrapper::-webkit-scrollbar-track {
+  background: #3a3f4a;
+}
+/* FIX: Set fixed width for Date and a flexible width for Description */
+.detail-table thead th:nth-child(1),
+.detail-table tbody td:nth-child(1) {
+  width: 120px;
+}
+.detail-table thead th:nth-child(3),
+.detail-table tbody td:nth-child(3) {
+  width: 120px;
+}
+.detail-table thead th:nth-child(2),
+.detail-table tbody td:nth-child(2) {
+  width: calc(100% - 240px);
+}
+
+/* FIX: Compensate for the scrollbar width on the table header to prevent misalignment */
+/* The header must be slightly narrower than 100% to match the body's viewable width */
+.detail-table thead tr {
+  width: calc(100% - 8px); /* 8px is the width of the custom scrollbar */
+}
