@@ -1,35 +1,43 @@
 """
 src/config.py
 
-Paths are resolved automatically based on which user profile exists on the machine.
-Set the BOA_DATA_DIR environment variable to override both paths.
+Data directory is stored in settings.ini in the project root.
+Use the Settings button in the app to change it, or edit settings.ini directly.
 """
 import os
+import configparser
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+SETTINGS_FILE = os.path.join(PROJECT_DIR, "settings.ini")
+
+_DEFAULT_DATA_DIR = os.path.join(PROJECT_DIR, "data")
 
 
-def _resolve_data_dir() -> str:
-    """Determine the data directory based on environment or machine context."""
-    # 1. Environment variable override (highest priority)
-    env_dir = os.environ.get("BOA_DATA_DIR")
-    if env_dir:
-        return env_dir
-
-    # 2. Auto-detect based on which user directory exists
-    candidates = [
-        # Work
-        r"C:\Users\dgrady\eclipse-workspace\Home Python\Documents\Bank of America",
-        # Home
-        r"C:\Users\dgrad\Documents\Python\Documents\Bank of America",
-    ]
-    for path in candidates:
-        if os.path.isdir(path):
+def _read_data_dir() -> str:
+    """Read the data directory from settings.ini, falling back to project/data."""
+    config = configparser.ConfigParser()
+    if os.path.exists(SETTINGS_FILE):
+        config.read(SETTINGS_FILE)
+        path = config.get("paths", "data_directory", fallback="")
+        if path and os.path.isdir(path):
             return path
-
-    # 3. Fallback: use a 'data' folder next to the src directory
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "data")
+    return _DEFAULT_DATA_DIR
 
 
-_DATA_DIR = _resolve_data_dir()
+def save_data_dir(data_dir: str) -> None:
+    """Write the data directory to settings.ini."""
+    config = configparser.ConfigParser()
+    if os.path.exists(SETTINGS_FILE):
+        config.read(SETTINGS_FILE)
+    if not config.has_section("paths"):
+        config.add_section("paths")
+    config.set("paths", "data_directory", data_dir)
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        config.write(f)
+
+
+_DATA_DIR = _read_data_dir()
 
 STATEMENT_DIRECTORY = _DATA_DIR
 DATABASE_PATH = _DATA_DIR

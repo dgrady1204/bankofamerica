@@ -335,6 +335,16 @@ function updateDashboardFilters() {
   )}`;
 }
 
+function updateYearNavButtons() {
+  const yearSelect = document.getElementById("year-select");
+  const prevBtn = document.getElementById("year-prev");
+  const nextBtn = document.getElementById("year-next");
+  if (!yearSelect || !prevBtn || !nextBtn) return;
+  // Options are descending (2026, 2025, 2024...), so index 0 = newest, last = oldest
+  prevBtn.disabled = yearSelect.selectedIndex >= yearSelect.options.length - 1;
+  nextBtn.disabled = yearSelect.selectedIndex <= 0;
+}
+
 // Add a new function to handle the button click
 function openPdfView(statementId, statementType, startDate, endDate) {
   // Construct the URL with the statement ID
@@ -380,6 +390,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const detailContainer = document.getElementById(
     "transaction-detail-container"
   );
+
+  // --- Year Navigation Arrows ---
+  const yearSelect = document.getElementById("year-select");
+  const yearPrevBtn = document.getElementById("year-prev");
+  const yearNextBtn = document.getElementById("year-next");
+
+  if (yearPrevBtn && yearSelect) {
+    yearPrevBtn.addEventListener("click", () => {
+      if (yearSelect.selectedIndex < yearSelect.options.length - 1) {
+        yearSelect.selectedIndex++;
+        updateDashboardFilters();
+      }
+    });
+  }
+  if (yearNextBtn && yearSelect) {
+    yearNextBtn.addEventListener("click", () => {
+      if (yearSelect.selectedIndex > 0) {
+        yearSelect.selectedIndex--;
+        updateDashboardFilters();
+      }
+    });
+  }
+  updateYearNavButtons();
 
   // Check if the container exists before adding the listener
   if (detailContainer) {
@@ -679,6 +712,68 @@ document.addEventListener("DOMContentLoaded", () => {
         .catch(err => alert("Delete error: " + err.message));
     });
   }
+
+  // --- Settings Modal ---
+  const settingsButton = document.getElementById("settings-button");
+  const settingsModal = document.getElementById("settings-modal");
+  const dataDirectoryInput = document.getElementById("data-directory-input");
+  const saveSettingsButton = document.getElementById("save-settings-button");
+  const cancelSettingsButton = document.getElementById("cancel-settings-button");
+  const settingsMessage = document.getElementById("settings-message");
+  const settingsCloseButton = settingsModal ? settingsModal.querySelector(".close-button") : null;
+
+  function closeSettingsModal() {
+    if (settingsModal) settingsModal.style.display = "none";
+    settingsMessage.style.display = "none";
+  }
+
+  if (settingsButton) {
+    settingsButton.addEventListener("click", () => {
+      fetch("/get_settings")
+        .then(res => res.json())
+        .then(data => {
+          dataDirectoryInput.value = data.data_directory || "";
+          settingsMessage.style.display = "none";
+          settingsModal.style.display = "block";
+        });
+    });
+  }
+
+  if (saveSettingsButton) {
+    saveSettingsButton.addEventListener("click", () => {
+      const newDir = dataDirectoryInput.value.trim();
+      if (!newDir) {
+        settingsMessage.textContent = "Directory path cannot be empty.";
+        settingsMessage.style.color = "red";
+        settingsMessage.style.display = "block";
+        return;
+      }
+      fetch("/save_settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data_directory: newDir }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            settingsMessage.textContent = data.message;
+            settingsMessage.style.color = "green";
+          } else {
+            settingsMessage.textContent = data.error || "Save failed.";
+            settingsMessage.style.color = "red";
+          }
+          settingsMessage.style.display = "block";
+        })
+        .catch(err => {
+          settingsMessage.textContent = "Error: " + err.message;
+          settingsMessage.style.color = "red";
+          settingsMessage.style.display = "block";
+        });
+    });
+  }
+
+  if (cancelSettingsButton) cancelSettingsButton.addEventListener("click", closeSettingsModal);
+  if (settingsCloseButton) settingsCloseButton.addEventListener("click", closeSettingsModal);
 
   const summaryTable = document.querySelector(
     ".category-month-table.tablesort"

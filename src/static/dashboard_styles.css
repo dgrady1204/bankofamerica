@@ -130,6 +130,11 @@ th {
   color: #a8a8a2;
   border-color: #a8a8a2;
 }
+.year-nav-btn {
+  padding: 8px 10px;
+  font-size: 0.85em;
+  line-height: 1;
+}
 .balances-and-transactions-container {
   width: 100%; /* Increased width for two-column layout */
   max-width: 1500px;

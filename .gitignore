@@ -26,3 +26,8 @@ NUL
 # Database files
 *.db
 *.sqlite3
+
+# Local settings (machine-specific paths)
+settings.ini
+
+project_notes/screenshots

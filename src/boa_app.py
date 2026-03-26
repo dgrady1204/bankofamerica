@@ -17,6 +17,7 @@ from werkzeug.utils import secure_filename
 from boa_db_manager import BoaDbManager
 from boa_models import Statement, Transaction
 from boa_statement import process_and_insert_statements
+from config import STATEMENT_DIRECTORY, DATABASE_PATH, save_data_dir
 
 # --- Logging Setup ---
 # Get the directory of the current file (src/)
@@ -519,6 +520,25 @@ def view_statement(statement_id):
             download_name=stmt_row.get('filename', 'statement.pdf')
         )
     return "Statement not found or no PDF data.", 404
+
+
+@app.route("/get_settings")
+def get_settings():
+    """Return the current data directory path."""
+    return jsonify({"data_directory": STATEMENT_DIRECTORY})
+
+
+@app.route("/save_settings", methods=["POST"])
+def save_settings():
+    """Save the data directory to settings.ini. Requires app restart to take effect."""
+    data = request.get_json()
+    new_dir = data.get("data_directory", "").strip()
+    if not new_dir:
+        return jsonify({"success": False, "error": "Directory path cannot be empty"}), 400
+    if not os.path.isdir(new_dir):
+        return jsonify({"success": False, "error": "Directory does not exist"}), 400
+    save_data_dir(new_dir)
+    return jsonify({"success": True, "message": "Settings saved. Restart the app for changes to take effect."})
 
 
 # --- Main entry point for Flask's development server ---

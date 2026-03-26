@@ -13,13 +13,15 @@
     <div class="main-wrapper">
       <h1>Bank Statement Dashboard</h1>
       <div class="dashboard-filters">
-          <div class="filter-group">
-              <label for="year-select">Select Year:</label>
+          <div class="filter-group" style="gap: 5px;">
+              <label for="year-select" style="margin-right: 5px;">Select Year:</label>
               <select id="year-select" class="form-control" onchange="updateDashboardFilters()">
                   {% for year in all_available_years %}
                   <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>
                   {% endfor %}
               </select>
+              <button id="year-prev" class="form-control year-nav-btn" style="margin-left: 5px;" title="Previous year">&#9664;</button>
+              <button id="year-next" class="form-control year-nav-btn" title="Next year">&#9654;</button>
           </div>
           <div class="filter-group">
               <label for="account-type-select">Account Type:</label>
@@ -29,8 +31,9 @@
                   {% endfor %}
               </select>
           </div>
-          <div class="filter-group">
+          <div class="filter-group" style="gap: 30px;">
               <button id="add-statements-button" class="form-control">Add Statements</button>
+              <button id="settings-button" class="form-control">Settings</button>
           </div>
       </div>
       
@@ -113,6 +116,24 @@
               <button type="button" id="cancel-button">Cancel</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="settings-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">&times;</span>
+          <h2>Settings</h2>
+          <div class="form-group">
+            <label for="data-directory-input">Data Directory:</label>
+            <input type="text" id="data-directory-input" style="width: 100%;" />
+            <small style="color: #aaa; margin-top: 5px; display: block;">Copy and paste the full folder path from File Explorer.</small>
+          </div>
+          <div class="button-container">
+            <button id="save-settings-button" class="form-control">Save</button>
+            <button id="cancel-settings-button" class="form-control">Cancel</button>
+          </div>
+          <p id="settings-message" style="margin-top: 10px; display: none;"></p>
         </div>
       </div>
 
