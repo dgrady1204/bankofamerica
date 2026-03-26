@@ -1,0 +1,17 @@
+
+3/25/2026
+Cleanup Transaction Details.
+ - Allow the ability to edit the check number
+ - Spacing needs to be cleaned up
+ - Once override description is entered display that above the original description in the trnsaction list.
+
+Total doesn't display any transactions.  Other is meant as a category placeholder for the moment.
+
+Add the ability to Enter/Edit categories.  New button between Add Statements and Settings.  Not sure how this will look yet.
+
+Primary Category and Secondary category should lookup into categories entered with the new category button.
+
+Cleanup pylint/pylance issues.
+
+review html and css code for structure/issues.
+
